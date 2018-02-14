@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "dateformat": "^3.0.3",
+    "dotenv": "^5.0.0",
     "fast-csv": "^2.4.1",
     "inquirer": "^5.0.1",
     "inquirer-datepicker-prompt": "^0.4.2",

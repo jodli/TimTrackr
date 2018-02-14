@@ -3,6 +3,9 @@ const log = require('loglevel');
 const fs = require('fs');
 const dateFormat = require('dateformat');
 const csv = require('fast-csv');
+const sageBooker = require('../SAGE-BookingSimulator');
+
+require('dotenv').config();
 
 function readBookingPositions(inFile) {
     return new Promise(function (resolve, reject) {
@@ -197,14 +200,19 @@ selectFunction([{
 }]).then(answers => {
     log.trace(answers);
     if (answers.getOrBook == "get") {
-    }
-    else if (answers.getOrBook == "book") {
-        readBookingPositions("20180213JBc(Project+Registrations).csv").then(
+        sageBooker.getProjects("Projects+Registrations.csv", {
+            interactiveMode: true
+        });
+    } else if (answers.getOrBook == "book") {
+        readBookingPositions("Projects+Registrations.csv").then(
             (bookingPositions) => {
                 createBookings(bookingPositions).then(bookings => {
                     log.trace(bookings);
                     const sageBookings = createSageBookings(bookings);
                     writeSageBookings("out.csv", sageBookings);
+                    sageBooker.bookProjects("out.csv", {
+                        interactiveMode: true
+                    });
                 });
             });
     }
