@@ -9,7 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "fast-csv": "^2.4.1",
     "inquirer": "^5.0.1",
-    "inquirer-datepicker-prompt": "^0.4.2"
+    "inquirer-datepicker-prompt": "^0.4.2",
+    "loglevel": "^1.6.1"
   }
 }

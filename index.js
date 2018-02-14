@@ -1,26 +1,47 @@
 var inquirer = require('inquirer');
+const log = require('loglevel');
+const fs = require('fs');
 
-var bookingPositions = [{
-    project: "P00001 Project 1",
-    registrations: ["1-1234-P00001 Reg A", "1-1235-P00001 Reg B"]
-}, {
-    project: "P00002 Project 2",
-    registrations: ["1-1234-P00001 Reg C", "1-1235-P00001 Reg D"]
-}];
+function readBookingPositions(inFile) {
+    return new Promise(function (resolve, reject) {
+        const csvReader = require('fast-csv');
 
-function createBookings(bookings) {
-    return createMoreBookings(bookings).then(moreBookings => {
+        let bookingPositions = [];
+        log.info('Setting up csv reader.');
+        const csvStream = csvReader.fromStream(fs.createReadStream(inFile), {
+            delimiter: ';',
+            headers: true,
+            comment: '#',
+            ignoreEmpty: true
+        }).transform(function (data) {
+            return {
+                "Project": data.Project,
+                "Registrations": data.Registrations.split(",")
+            }
+        }).on('data', async (data) => {
+            log.info(data);
+            bookingPositions.push(data);
+            log.info("Booking position list now contains: " + bookingPositions.length);
+        }).on('end', async (data) => {
+            log.info('No more rows.');
+            resolve(bookingPositions);
+        });
+    });
+}
+
+function createBookings(bookingPositions, bookings) {
+    return createMoreBookings(bookingPositions, bookings).then(moreBookings => {
         if (moreBookings) {
-            return createBookings(bookings);
+            return createBookings(bookingPositions, bookings);
         } else {
             return bookings;
         }
     });
 }
 
-function createMoreBookings(bookings) {
+function createMoreBookings(bookingPositions, bookings) {
     return new Promise(function (resolve, reject) {
-        createNewBooking().then(booking => {
+        createNewBooking(bookingPositions).then(booking => {
             if (booking) {
                 bookings.push(booking);
             }
@@ -37,28 +58,28 @@ function createMoreBookings(bookings) {
     });
 }
 
-function createNewBooking() {
+function createNewBooking(bookingPositions) {
     return new Promise(function (resolve, reject) {
         let booking = {};
-
+        log.info(bookingPositions);
         var selectProject = inquirer.createPromptModule();
         selectProject([{
             type: "list",
             name: "project",
             message: "Which project?",
-            choices: bookingPositions.map(x => x.project)
+            choices: bookingPositions.map(x => x.Project)
         }]).then(answers => {
             booking.project = answers.project;
-            //console.info(booking);
+            //log.info(booking);
             var selectRegistration = inquirer.createPromptModule();
             selectRegistration([{
                 type: "list",
                 name: "registration",
                 message: "Which registration?",
-                choices: bookingPositions.filter(x => x.project == answers.project)[0].registrations
+                choices: bookingPositions.filter(x => x.Project == answers.project)[0].Registrations
             }]).then(answers => {
                 booking.registration = answers.registration;
-                //console.info(booking);
+                //log.info(booking);
                 var selectDate = inquirer.createPromptModule();
                 selectDate.registerPrompt('datetime', require('inquirer-datepicker-prompt'));
                 selectDate([{
@@ -68,7 +89,7 @@ function createNewBooking() {
                     format: ['dd', '.', 'mm', '.', 'yyyy']
                 }]).then(answers => {
                     booking.date = answers.date;
-                    //console.info(booking);
+                    //log.info(booking);
                     var selectDuration = inquirer.createPromptModule();
                     selectDuration([{
                         type: "input",
@@ -76,7 +97,7 @@ function createNewBooking() {
                         message: "For how long?",
                     }]).then(answers => {
                         booking.duration = answers.duration;
-                        //console.info(booking);
+                        //log.info(booking);
                         var enterComment = inquirer.createPromptModule();
                         enterComment([{
                             type: "input",
@@ -84,14 +105,14 @@ function createNewBooking() {
                             message: "What did you do?"
                         }]).then(answers => {
                             booking.comment = answers.comment;
-                            //console.info(booking);
+                            //log.info(booking);
                             var confirm = inquirer.createPromptModule();
                             confirm([{
                                 type: "confirm",
                                 name: "confirm",
                                 message: "Is this correct?"
                             }]).then(answers => {
-                                //console.info(booking);
+                                //log.info(booking);
                                 if (answers.confirm) {
                                     resolve(booking);
                                 } else {
@@ -106,11 +127,17 @@ function createNewBooking() {
     });
 }
 
-async function bookBookings(bookings) {
-    console.info("Booking your booking now.");
-    console.info(bookings);
+function bookBookings(bookings) {
+    log.info("Booking your booking now.");
+    log.info(bookings);
 }
 
+process.on('unhandledRejection', (reason, p) => {
+    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+    // application specific logging, throwing an error, or other logic here
+});
+
+log.setLevel('info');
 var selectFunction = inquirer.createPromptModule();
 selectFunction([{
     type: "list",
@@ -125,13 +152,16 @@ selectFunction([{
         value: "book"
     }]
 }]).then(answers => {
-    console.info(answers);
+    log.info(answers);
     if (answers.getOrBook == "get") {
     }
     else if (answers.getOrBook == "book") {
-        const bookingList = [];
-        createBookings(bookingList).then(bookings => {
-            bookBookings(bookings);
-        });
+        readBookingPositions("20180213JBc(Project+Registrations).csv").then(
+            (bookingPositions) => {
+                const bookingList = [];
+                createBookings(bookingPositions, bookingList).then(bookings => {
+                    bookBookings(bookings);
+                });
+            });
     }
 });
