@@ -1,6 +1,7 @@
 var inquirer = require('inquirer');
 const log = require('loglevel');
 const fs = require('fs');
+const dateFormat = require('dateformat');
 
 function readBookingPositions(inFile) {
     return new Promise(function (resolve, reject) {
@@ -107,7 +108,7 @@ function createNewBooking(bookingPositions) {
                         format: ['HH', ':', 'MM']
                     }]).then(answers => {
                         booking.duration = answers.duration.toLocaleTimeString("de-DE");
-                        log.info(booking);
+                        // log.info(booking);
                         var enterComment = inquirer.createPromptModule();
                         enterComment([{
                             type: "input",
@@ -137,20 +138,37 @@ function createNewBooking(bookingPositions) {
     });
 }
 
-function bookBookings(bookings) {
+function createSageBookings(bookings) {
     log.info("Booking your booking now.");
-    log.info(bookings);
+    // log.info(bookings);
 
+    const sageBookings = [];
     bookings.forEach(booking => {
-        let duration = convertDuration(booking.duration);
-        log.info(duration);
-    });
+        let sageBooking = {};
 
-    function convertDuration(duration) {
-        let convertedDuration = duration.split(":");
-        convertedDuration = convertedDuration[0] + convertedDuration[1];
-        return convertedDuration;
-    }
+        function convertDate(date) {
+            let convertedDate = dateFormat(date, "dd.mm.yyyy");
+            return convertedDate;
+        }
+
+        function convertDuration(duration) {
+            let convertedDuration = duration.split(":");
+            convertedDuration = convertedDuration[0] + convertedDuration[1];
+            return convertedDuration;
+        }
+
+        sageBooking.Project = booking.project;
+        sageBooking.Registration = booking.registration;
+        sageBooking.Date = convertDate(booking.date);
+        sageBooking.Duration = convertDuration(booking.duration);
+        sageBooking.Comment = booking.comment;
+        log.info(sageBooking);
+
+        sageBookings.push(sageBooking);
+    });
+    log.info(sageBookings);
+
+    return sageBookings;
 }
 
 process.on('unhandledRejection', (reason, p) => {
@@ -181,7 +199,7 @@ selectFunction([{
             (bookingPositions) => {
                 const bookingList = [];
                 createBookings(bookingPositions, bookingList).then(bookings => {
-                    bookBookings(bookings);
+                    let sageBookings = createSageBookings(bookings);
                 });
             });
     }
