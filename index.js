@@ -91,13 +91,23 @@ function createNewBooking(bookingPositions) {
                     booking.date = answers.date;
                     //log.info(booking);
                     var selectDuration = inquirer.createPromptModule();
+                    selectDuration.registerPrompt('datetime', require('inquirer-datepicker-prompt'));
                     selectDuration([{
-                        type: "input",
+                        type: "datetime",
                         name: "duration",
                         message: "For how long?",
+                        initial: new Date(0, 0, 0, 0, 0, 0, 0),
+                        time: {
+                            min: '12:15 AM',
+                            max: '03:00 PM',
+                            minutes: {
+                                interval: 15
+                            }
+                        },
+                        format: ['HH', ':', 'MM']
                     }]).then(answers => {
-                        booking.duration = answers.duration;
-                        //log.info(booking);
+                        booking.duration = answers.duration.toLocaleTimeString("de-DE");
+                        log.info(booking);
                         var enterComment = inquirer.createPromptModule();
                         enterComment([{
                             type: "input",
@@ -130,6 +140,17 @@ function createNewBooking(bookingPositions) {
 function bookBookings(bookings) {
     log.info("Booking your booking now.");
     log.info(bookings);
+
+    bookings.forEach(booking => {
+        let duration = convertDuration(booking.duration);
+        log.info(duration);
+    });
+
+    function convertDuration(duration) {
+        let convertedDuration = duration.split(":");
+        convertedDuration = convertedDuration[0] + convertedDuration[1];
+        return convertedDuration;
+    }
 }
 
 process.on('unhandledRejection', (reason, p) => {
