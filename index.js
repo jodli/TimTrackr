@@ -2,14 +2,13 @@ var inquirer = require('inquirer');
 const log = require('loglevel');
 const fs = require('fs');
 const dateFormat = require('dateformat');
+const csv = require('fast-csv');
 
 function readBookingPositions(inFile) {
     return new Promise(function (resolve, reject) {
-        const csvReader = require('fast-csv');
-
         let bookingPositions = [];
-        log.info('Setting up csv reader.');
-        const csvStream = csvReader.fromStream(fs.createReadStream(inFile), {
+        log.info('Reading projects and registrations from file: ' + inFile);
+        const csvStream = csv.fromStream(fs.createReadStream(inFile), {
             delimiter: ';',
             headers: true,
             comment: '#',
@@ -20,17 +19,19 @@ function readBookingPositions(inFile) {
                 "Registrations": data.Registrations.split(",")
             }
         }).on('data', async (data) => {
-            log.info(data);
+            log.trace(data);
             bookingPositions.push(data);
-            log.info("Booking position list now contains: " + bookingPositions.length);
+            log.trace("Booking position list now contains: " + bookingPositions.length);
         }).on('end', async (data) => {
-            log.info('No more rows.');
+            log.trace('No more rows.');
+            log.trace("Read " + bookingPositions.length + " projects and their registrations.");
             resolve(bookingPositions);
         });
     });
 }
 
 function createBookings(bookingPositions, bookings) {
+    bookings = bookings || [];
     return createMoreBookings(bookingPositions, bookings).then(moreBookings => {
         if (moreBookings) {
             return createBookings(bookingPositions, bookings);
@@ -62,7 +63,7 @@ function createMoreBookings(bookingPositions, bookings) {
 function createNewBooking(bookingPositions) {
     return new Promise(function (resolve, reject) {
         let booking = {};
-        log.info(bookingPositions);
+        log.trace(bookingPositions);
         var selectProject = inquirer.createPromptModule();
         selectProject([{
             type: "list",
@@ -139,7 +140,6 @@ function createNewBooking(bookingPositions) {
 }
 
 function createSageBookings(bookings) {
-    log.info("Booking your booking now.");
     // log.info(bookings);
 
     const sageBookings = [];
@@ -162,19 +162,23 @@ function createSageBookings(bookings) {
         sageBooking.Date = convertDate(booking.date);
         sageBooking.Duration = convertDuration(booking.duration);
         sageBooking.Comment = booking.comment;
-        log.info(sageBooking);
+        // log.info(sageBooking);
 
         sageBookings.push(sageBooking);
     });
-    log.info(sageBookings);
+    // log.info(sageBookings);
 
     return sageBookings;
 }
 
-process.on('unhandledRejection', (reason, p) => {
-    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
-    // application specific logging, throwing an error, or other logic here
-});
+function writeSageBookings(outFile, sageBookings) {
+    csv.writeToStream(fs.createWriteStream(outFile), sageBookings, {
+        headers: true,
+        delimiter: ';'
+    });
+
+    log.info("Sage Bookings written to file: " + outFile);
+}
 
 log.setLevel('info');
 var selectFunction = inquirer.createPromptModule();
@@ -191,15 +195,16 @@ selectFunction([{
         value: "book"
     }]
 }]).then(answers => {
-    log.info(answers);
+    log.trace(answers);
     if (answers.getOrBook == "get") {
     }
     else if (answers.getOrBook == "book") {
         readBookingPositions("20180213JBc(Project+Registrations).csv").then(
             (bookingPositions) => {
-                const bookingList = [];
-                createBookings(bookingPositions, bookingList).then(bookings => {
-                    let sageBookings = createSageBookings(bookings);
+                createBookings(bookingPositions).then(bookings => {
+                    log.trace(bookings);
+                    const sageBookings = createSageBookings(bookings);
+                    writeSageBookings("out.csv", sageBookings);
                 });
             });
     }
