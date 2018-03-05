@@ -12,25 +12,31 @@ function readBookingPositions(inFile) {
     return new Promise(function (resolve, reject) {
         let bookingPositions = [];
         log.info('Reading projects and registrations from file: ' + inFile);
-        const csvStream = csv.fromStream(fs.createReadStream(inFile), {
-            delimiter: ';',
-            headers: true,
-            comment: '#',
-            ignoreEmpty: true
-        }).transform(function (data) {
-            return {
-                "Project": data.Project,
-                "Registrations": data.Registrations.split(",")
-            }
-        }).on('data', async (data) => {
-            log.trace(data);
-            bookingPositions.push(data);
-            log.trace("Booking position list now contains: " + bookingPositions.length);
-        }).on('end', async (data) => {
-            log.trace('No more rows.');
-            log.trace("Read " + bookingPositions.length + " projects and their registrations.");
-            resolve(bookingPositions);
-        });
+        if (!fs.existsSync(inFile)) {
+            reject("File does not exist.");
+        }
+        else {
+            const projectsAndRegistrationsFile = fs.createReadStream(inFile);
+            const csvStream = csv.fromStream(projectsAndRegistrationsFile, {
+                delimiter: ';',
+                headers: true,
+                comment: '#',
+                ignoreEmpty: true
+            }).transform(function (data) {
+                return {
+                    "Project": data.Project,
+                    "Registrations": data.Registrations.split(",")
+                }
+            }).on('data', async (data) => {
+                log.trace(data);
+                bookingPositions.push(data);
+                log.trace("Booking position list now contains: " + bookingPositions.length);
+            }).on('end', async (data) => {
+                log.trace('No more rows.');
+                log.trace("Read " + bookingPositions.length + " projects and their registrations.");
+                resolve(bookingPositions);
+            });
+        }
     });
 }
 
@@ -234,6 +240,8 @@ selectFunction([{
                         }
                     });
                 });
+            }).catch(message => {
+                log.error(message);
             });
     }
 });
