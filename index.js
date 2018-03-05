@@ -4,7 +4,8 @@ const fs = require('fs');
 const dateFormat = require('dateformat');
 const csv = require('fast-csv');
 const Table = require('cli-table2');
-const sageBooker = require('../SAGE-BookingSimulator');
+const ProgressBar = require('progress');
+const SageBooker = require('../SAGE-BookingSimulator');
 
 require('dotenv').config();
 
@@ -216,6 +217,19 @@ selectFunction([{
 }]).then(answers => {
     log.trace(answers);
     if (answers.getOrBook == "get") {
+        var bar = undefined;
+        const sageBooker = new SageBooker();
+        sageBooker.on('start', async (totalProjects) => {
+            bar = new ProgressBar('Getting projects... [:bar] :current/:total :etas', {
+                total: totalProjects
+            });
+        }).on('data', async (project, registration) => {
+            bar.tick();
+            // log.info(project);
+            // log.info(registration);
+        }).on('end', async () => {
+            log.info("\nDone");
+        });
         sageBooker.getProjects("Projects+Registrations.csv", {
             interactiveMode: true
         });
@@ -234,6 +248,16 @@ selectFunction([{
                         message: "Do you really want to book this?"
                     }]).then(answers => {
                         if (answers.confirmBookings) {
+                            const bar = new ProgressBar('Booking times... [:bar] :current/:total :etas', {
+                                total: sageBookings.length
+                            });
+                            const sageBooker = new SageBooker();
+                            sageBooker.on('data', async (data) => {
+                                bar.tick();
+                                // log.info(data);
+                            }).on('end', async () => {
+                                log.info("\nDone");
+                            });
                             sageBooker.bookProjects("out.csv", {
                                 interactiveMode: true
                             });
