@@ -3,6 +3,7 @@ const log = require('loglevel');
 const fs = require('fs');
 const dateFormat = require('dateformat');
 const csv = require('fast-csv');
+const Table = require('cli-table2');
 const sageBooker = require('../SAGE-BookingSimulator');
 
 require('dotenv').config();
@@ -143,10 +144,18 @@ function createNewBooking(bookingPositions) {
 }
 
 function createSageBookings(bookings) {
-    // log.info(bookings);
+    var table = new Table({
+        head: ['Project', 'Registration', 'Date', 'Duration', 'Comment']
+    });
 
     const sageBookings = [];
     bookings.forEach(booking => {
+        table.push([
+            booking.project, booking.registration,
+            convertDate(booking.date), booking.duration,
+            booking.comment
+        ]);
+
         let sageBooking = {};
 
         function convertDate(date) {
@@ -170,6 +179,7 @@ function createSageBookings(bookings) {
         sageBookings.push(sageBooking);
     });
     // log.info(sageBookings);
+    log.info(table.toString());
 
     return sageBookings;
 }
@@ -180,7 +190,7 @@ function writeSageBookings(outFile, sageBookings) {
         delimiter: ';'
     });
 
-    log.info("Sage Bookings written to file: " + outFile);
+    log.trace("Sage Bookings written to file: " + outFile);
 }
 
 log.setLevel('info');
@@ -210,8 +220,18 @@ selectFunction([{
                     log.trace(bookings);
                     const sageBookings = createSageBookings(bookings);
                     writeSageBookings("out.csv", sageBookings);
-                    sageBooker.bookProjects("out.csv", {
-                        interactiveMode: true
+
+                    var confirmBookings = inquirer.createPromptModule();
+                    confirmBookings([{
+                        type: "confirm",
+                        name: "confirmBookings",
+                        message: "Do you really want to book this?"
+                    }]).then(answers => {
+                        if (answers.confirmBookings) {
+                            sageBooker.bookProjects("out.csv", {
+                                interactiveMode: true
+                            });
+                        }
                     });
                 });
             });
