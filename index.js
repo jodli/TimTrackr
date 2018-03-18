@@ -1,5 +1,6 @@
 var inquirer = require('inquirer');
 const log = require('loglevel');
+const performance = require('performance-now');
 const fs = require('fs');
 const dateFormat = require('dateformat');
 const csv = require('fast-csv');
@@ -228,8 +229,10 @@ selectFunction([{
             // log.info(project);
             // log.info(registration);
         }).on('end', async () => {
-            log.info("\nDone");
+            const endTime = performance();
+            log.info("\nDone. This process took you " + ((endTime - startTime) / 1000 / 60).toFixed(2) + " minutes.");
         });
+        const startTime = performance();
         sageBooker.getProjects("Projects+Registrations.csv", {
             interactiveMode: true
         });
@@ -256,8 +259,10 @@ selectFunction([{
                                 bar.tick();
                                 // log.info(data);
                             }).on('end', async () => {
-                                log.info("\nDone");
+                                const endTime = performance();
+                                log.info("\nDone. This process took you " + ((endTime - startTime) / 1000 / 60).toFixed(2) + " minutes.");
                             });
+                            const startTime = performance();
                             sageBooker.bookProjects("out.csv", {
                                 interactiveMode: true
                             });
