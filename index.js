@@ -2,6 +2,7 @@ var inquirer = require('inquirer');
 const log = require('loglevel');
 const performance = require('performance-now');
 const fs = require('fs');
+const path = require('path');
 const dateFormat = require('dateformat');
 const csv = require('fast-csv');
 const Table = require('cli-table2');
@@ -9,6 +10,21 @@ const ProgressBar = require('progress');
 const SageBooker = require('../SAGE-BookingSimulator');
 
 require('dotenv').config();
+
+let suffix = 0;
+
+function createScreenshotDirectory(localSuffix = 0) {
+    const screenshotDir = path.join(__dirname,
+        dateFormat(new Date(), "yyyymmdd") + (localSuffix > 0 ? '_' + localSuffix : ''));
+
+    if (!fs.existsSync(screenshotDir)) {
+        fs.mkdirSync(screenshotDir);
+    } else {
+        suffix++;
+        return createScreenshotDirectory(suffix);
+    }
+    return screenshotDir;
+}
 
 function readBookingPositions(inFile) {
     return new Promise(function (resolve, reject) {
@@ -234,7 +250,8 @@ selectFunction([{
         });
         const startTime = performance();
         sageBooker.getProjects("Projects+Registrations.csv", {
-            interactiveMode: true
+            interactiveMode: true,
+            screenshotDir: createScreenshotDirectory()
         });
     } else if (answers.getOrBook == "book") {
         readBookingPositions("Projects+Registrations.csv").then(
@@ -264,7 +281,8 @@ selectFunction([{
                             });
                             const startTime = performance();
                             sageBooker.bookProjects("out.csv", {
-                                interactiveMode: true
+                                interactiveMode: true,
+                                screenshotDir: createScreenshotDirectory()
                             });
                         }
                     });
